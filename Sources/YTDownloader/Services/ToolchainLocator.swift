@@ -3,6 +3,7 @@ import Foundation
 struct DependencyIssue: Identifiable, Hashable, Sendable {
     let toolName: String
     let message: String
+    var localizationKey: String? = nil
     let installationURL: URL?
 
     var id: String { toolName }
@@ -45,6 +46,7 @@ struct ToolchainLocator {
             issues.append(DependencyIssue(
                 toolName: "yt-dlp",
                 message: "找不到 yt-dlp。請依官方安裝說明安裝後重新開啟 app。",
+                localizationKey: "dependency.ytdlp",
                 installationURL: URL(string: "https://github.com/yt-dlp/yt-dlp/wiki/Installation")
             ))
         }
@@ -52,6 +54,7 @@ struct ToolchainLocator {
             issues.append(DependencyIssue(
                 toolName: "ffmpeg / ffprobe",
                 message: "找不到 ffmpeg 或 ffprobe；合併影片與音訊需要這兩個工具。",
+                localizationKey: "dependency.ffmpeg",
                 installationURL: URL(string: "https://ffmpeg.org/download.html")
             ))
         }
@@ -62,6 +65,7 @@ struct ToolchainLocator {
             issues.append(DependencyIssue(
                 toolName: "Deno",
                 message: message,
+                localizationKey: denoCandidate == nil ? "dependency.denoMissing" : "dependency.denoOutdated",
                 installationURL: URL(string: "https://deno.com/install")
             ))
         }

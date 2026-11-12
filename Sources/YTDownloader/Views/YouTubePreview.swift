@@ -81,10 +81,10 @@ struct YouTubePreview: NSViewRepresentable {
             guard message.frameInfo.isMainFrame, let code = message.body as? Int else { return }
             switch code {
             case 0: onError(nil)
-            case 101, 150: onError("這部影片不允許嵌入播放，請使用「在 YouTube 開啟」。")
-            case 100: onError("影片已移除或設為私人，無法播放預覽。")
-            case 153: onError("YouTube 無法識別此播放器，請使用「在 YouTube 開啟」。")
-            default: onError("無法播放影片預覽（代碼 \(code)），你仍可使用下載設定。")
+            case 101, 150: onError("preview.embeddingDisabled")
+            case 100: onError("preview.removed")
+            case 153: onError("preview.playerUnknown")
+            default: onError("preview.playbackError")
             }
         }
 
@@ -98,7 +98,7 @@ struct YouTubePreview: NSViewRepresentable {
 
         private func reportNavigationError(_ error: Error) {
             guard (error as NSError).code != NSURLErrorCancelled else { return }
-            onError("無法載入影片預覽。請檢查網路連線，或使用「在 YouTube 開啟」。")
+            onError("preview.error")
         }
     }
 }

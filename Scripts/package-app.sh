@@ -7,6 +7,7 @@ cd "$PROJECT_DIR"
 swift build --configuration release
 BIN_DIR="$(swift build --configuration release --show-bin-path)"
 EXECUTABLE="$BIN_DIR/YouTubeDownloader"
+RESOURCE_BUNDLE="$BIN_DIR/YouTubeDownloader_YouTubeDownloader.bundle"
 APP_DIR="$PROJECT_DIR/build/YouTubeDownloader.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 
@@ -18,6 +19,11 @@ fi
 mkdir -p "$CONTENTS_DIR/MacOS" "$CONTENTS_DIR/Resources"
 cp "$EXECUTABLE" "$CONTENTS_DIR/MacOS/YouTubeDownloader"
 cp "$PROJECT_DIR/Resources/AppIcon.icns" "$CONTENTS_DIR/Resources/AppIcon.icns"
+if [[ ! -d "$RESOURCE_BUNDLE" ]]; then
+  echo "Swift package resource bundle not found: $RESOURCE_BUNDLE" >&2
+  exit 1
+fi
+cp -R "$RESOURCE_BUNDLE" "$CONTENTS_DIR/Resources/"
 
 cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -25,7 +31,7 @@ cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>zh_TW</string>
+	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>YouTube Downloader</string>
 	<key>CFBundleExecutable</key>
@@ -54,6 +60,7 @@ cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
+codesign --force --deep --sign - "$APP_DIR"
 plutil -lint "$CONTENTS_DIR/Info.plist"
 test -x "$CONTENTS_DIR/MacOS/YouTubeDownloader"
 test -f "$CONTENTS_DIR/Resources/AppIcon.icns"

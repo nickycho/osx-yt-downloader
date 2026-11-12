@@ -3,13 +3,14 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var viewModel: DownloaderViewModel
+    @Environment(LanguageSettings.self) private var languageSettings
 
     var body: some View {
         VStack(spacing: 20) {
             header
 
             if viewModel.isCheckingTools {
-                ProgressView("正在檢查下載工具…")
+                ProgressView(languageSettings.string("tools.checking"))
                     .controlSize(.small)
             }
 
@@ -37,7 +38,7 @@ struct ContentView: View {
             Image(systemName: "play.rectangle.fill")
                 .font(.system(size: 25, weight: .semibold))
                 .foregroundStyle(.red)
-            TextField("貼上 YouTube 影片網址", text: $viewModel.urlText)
+            TextField(languageSettings.string("url.placeholder"), text: $viewModel.urlText)
                 .textFieldStyle(.roundedBorder)
                 .controlSize(.large)
                 .onSubmit { loadVideo() }
@@ -48,7 +49,7 @@ struct ContentView: View {
                         .controlSize(.small)
                         .frame(width: 88)
                 } else {
-                    Label("載入影片", systemImage: "arrow.down.circle")
+                    Label(languageSettings.string("url.load"), systemImage: "arrow.down.circle")
                         .frame(width: 88)
                 }
             }
@@ -59,18 +60,18 @@ struct ContentView: View {
 
     private var dependencyBanner: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("需要安裝或更新工具", systemImage: "exclamationmark.triangle.fill")
+            Label(languageSettings.string("dependency.heading"), systemImage: "exclamationmark.triangle.fill")
                 .font(.headline)
                 .foregroundStyle(.orange)
 
             ForEach(viewModel.toolchainStatus.issues) { issue in
                 HStack(alignment: .firstTextBaseline) {
-                    Text(issue.message)
+                    Text(issue.localizedMessage(using: languageSettings))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     Spacer(minLength: 12)
                     if let url = issue.installationURL {
-                        Link("安裝說明", destination: url)
+                        Link(languageSettings.string("dependency.installGuide"), destination: url)
                             .font(.callout)
                     }
                 }
@@ -88,23 +89,23 @@ struct ContentView: View {
             VStack(spacing: 14) {
                 ProgressView()
                     .controlSize(.large)
-                Text("正在讀取影片資訊與可用畫質…")
+                Text(languageSettings.string("loading.video"))
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case let .failed(message):
+        case .failed:
             ContentUnavailableView {
-                Label("無法載入影片", systemImage: "exclamationmark.triangle")
+                Label(languageSettings.string("error.loadTitle"), systemImage: "exclamationmark.triangle")
             } description: {
-                Text(message)
+                Text(viewModel.failureMessage ?? "")
                     .textSelection(.enabled)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         default:
             ContentUnavailableView {
-                Label("貼上 YouTube 網址開始", systemImage: "play.rectangle")
+                Label(languageSettings.string("empty.title"), systemImage: "play.rectangle")
             } description: {
-                Text("貼上有效的 YouTube 網址後，會自動顯示影片預覽、資訊與可下載的畫質。")
+                Text(languageSettings.string("empty.description"))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -122,12 +123,12 @@ struct ContentView: View {
                     }
 
                 if let previewError = viewModel.previewError {
-                    Label(previewError, systemImage: "info.circle")
+                    Label(languageSettings.string(previewError), systemImage: "info.circle")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
-                    Text("若影片不允許嵌入，請改在 YouTube 網頁播放。")
+                    Text(languageSettings.string("preview.embedHint"))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -146,7 +147,7 @@ struct ContentView: View {
                             Text(durationText(duration))
                         }
                         Spacer()
-                        Link("在 YouTube 開啟", destination: video.webpageURL)
+                        Link(languageSettings.string("video.openYoutube"), destination: video.webpageURL)
                     }
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -162,14 +163,14 @@ struct ContentView: View {
 
     private func downloadSettings(for video: VideoInfo) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            Label("下載設定", systemImage: "slider.horizontal.3")
+            Label(languageSettings.string("download.settings"), systemImage: "slider.horizontal.3")
                 .font(.headline)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("畫質")
+                Text(languageSettings.string("download.quality"))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
-                Picker("畫質", selection: $viewModel.selectedQuality) {
+                Picker(languageSettings.string("download.quality"), selection: $viewModel.selectedQuality) {
                     ForEach(video.qualities) { quality in
                         Text(quality.label).tag(Optional(quality))
                     }
@@ -181,7 +182,7 @@ struct ContentView: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("儲存位置")
+                Text(languageSettings.string("download.location"))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
                 HStack(alignment: .top, spacing: 8) {
@@ -194,7 +195,7 @@ struct ContentView: View {
                         .textSelection(.enabled)
                     Spacer(minLength: 0)
                 }
-                Button("選擇資料夾…", systemImage: "folder.badge.gearshape") {
+                Button(languageSettings.string("download.chooseFolder"), systemImage: "folder.badge.gearshape") {
                     viewModel.chooseDestination()
                 }
                 .controlSize(.small)
@@ -203,7 +204,7 @@ struct ContentView: View {
 
             Spacer(minLength: 4)
 
-            Button("下載影片", systemImage: "arrow.down.to.line") {
+            Button(languageSettings.string("download.start"), systemImage: "arrow.down.to.line") {
                 Task { await viewModel.startDownload() }
             }
                 .buttonStyle(.borderedProminent)
@@ -213,7 +214,7 @@ struct ContentView: View {
 
             downloadStatus
 
-            Text("畫質會依影片來源而異。")
+            Text(languageSettings.string("download.qualityHint"))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -245,20 +246,20 @@ struct ContentView: View {
             }
         case let .completed(fileURL):
             VStack(alignment: .leading, spacing: 8) {
-                Label("下載完成", systemImage: "checkmark.circle.fill")
+                Label(languageSettings.string("download.complete"), systemImage: "checkmark.circle.fill")
                     .font(.callout.weight(.medium))
                     .foregroundStyle(.green)
                 Text(fileURL.lastPathComponent)
                     .font(.caption)
                     .lineLimit(2)
                     .textSelection(.enabled)
-                Button("在 Finder 中顯示", systemImage: "folder") {
+                Button(languageSettings.string("download.showInFinder"), systemImage: "folder") {
                     NSWorkspace.shared.activateFileViewerSelecting([fileURL])
                 }
                 .controlSize(.small)
             }
-        case let .failed(message) where viewModel.videoInfo != nil:
-            Text(message)
+        case .failed where viewModel.videoInfo != nil:
+            Text(viewModel.failureMessage ?? "")
                 .font(.callout)
                 .foregroundStyle(.red)
                 .fixedSize(horizontal: false, vertical: true)
@@ -288,6 +289,6 @@ struct ContentView: View {
             let total = ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file)
             return "\(downloaded) / \(total)"
         }
-        return "已下載 \(downloaded)"
+        return languageSettings.format("download.progressAmount", downloaded)
     }
 }

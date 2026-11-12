@@ -246,7 +246,7 @@ struct YTDLPService {
         if normalized.contains("no video formats") || normalized.contains("requested format is not available") {
             return .noFormats
         }
-        return .extractionFailed(details.isEmpty ? "請確認網址和網路連線後重試。" : details)
+        return .extractionFailed(details)
     }
 
     private static func checkDependencies(in output: String) throws {
@@ -273,6 +273,48 @@ struct YTDLPService {
             return .downloadFailed(message)
         }
         return mapped
+    }
+}
+
+extension DependencyIssue {
+    @MainActor
+    func localizedMessage(using settings: LanguageSettings) -> String {
+        guard let localizationKey else { return message }
+        return settings.string(localizationKey)
+    }
+}
+
+extension YTDLPServiceError {
+    @MainActor
+    func localizedMessage(using settings: LanguageSettings) -> String {
+        switch self {
+        case .unsupportedURL:
+            settings.string("error.invalidURL")
+        case let .missingTools(issues):
+            issues.map { $0.localizedMessage(using: settings) }.joined(separator: "\n\n")
+        case .missingJavaScriptRuntime:
+            settings.string("error.javaScriptRuntime")
+        case .missingEJS:
+            settings.string("error.missingEJS")
+        case .videoUnavailable:
+            settings.string("error.videoUnavailable")
+        case .noFormats:
+            settings.string("error.noFormats")
+        case .unsupportedLiveStream:
+            settings.string("error.liveStream")
+        case .invalidMetadata:
+            settings.string("error.invalidMetadata")
+        case let .toolLaunch(message):
+            message
+        case let .extractionFailed(message):
+            settings.format("error.loadFailed", message.isEmpty ? settings.string("error.extractionGeneric") : message)
+        case let .downloadFailed(message):
+            settings.format("error.downloadFailed", message)
+        case let .destinationUnavailable(message):
+            settings.format("error.destinationUnavailable", message)
+        case .outputPathUnavailable:
+            settings.string("error.outputPathUnavailable")
+        }
     }
 }
 

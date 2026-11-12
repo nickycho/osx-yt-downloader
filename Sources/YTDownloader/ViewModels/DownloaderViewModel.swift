@@ -5,6 +5,26 @@ import Observation
 @MainActor
 @Observable
 final class DownloaderViewModel {
+    private enum FailurePresentation {
+        case localizedKey(String)
+        case dependencies([DependencyIssue])
+        case service(YTDLPServiceError)
+        case raw(String)
+
+        @MainActor func message(using settings: LanguageSettings) -> String {
+            switch self {
+            case let .localizedKey(key):
+                settings.string(key)
+            case let .dependencies(issues):
+                issues.map { $0.localizedMessage(using: settings) }.joined(separator: "\n\n")
+            case let .service(error):
+                error.localizedMessage(using: settings)
+            case let .raw(message):
+                message
+            }
+        }
+    }
+
     var urlText = ""
     var destinationDirectory: URL
     var selectedQuality: VideoQuality?
@@ -14,8 +34,15 @@ final class DownloaderViewModel {
 
     private(set) var toolchainStatus: ToolchainStatus
     private(set) var isCheckingTools: Bool
+    private let languageSettings: LanguageSettings
     private var ytdlpService: YTDLPService
     private var loadRequestCount = 0
+    private var failurePresentation: FailurePresentation?
+
+    var failureMessage: String? {
+        guard case .failed = state, let failurePresentation else { return nil }
+        return failurePresentation.message(using: languageSettings)
+    }
 
     var canStartDownload: Bool {
         guard toolchainStatus.canDownload, videoInfo != nil, selectedQuality != nil else { return false }
@@ -34,7 +61,8 @@ final class DownloaderViewModel {
         return isDownloading
     }
 
-    init(toolchainStatus: ToolchainStatus? = nil) {
+    init(toolchainStatus: ToolchainStatus? = nil, languageSettings: LanguageSettings = .shared) {
+        self.languageSettings = languageSettings
         let resolvedToolchain = toolchainStatus ?? ToolchainStatus(ytDLPURL: nil, ffmpegURL: nil, ffprobeURL: nil, denoURL: nil, issues: [])
         self.toolchainStatus = resolvedToolchain
         self.ytdlpService = YTDLPService(toolchain: resolvedToolchain)
@@ -58,17 +86,18 @@ final class DownloaderViewModel {
               YTDLPService.isSupportedVideoURL(url) else {
             videoInfo = nil
             selectedQuality = nil
-            state = .failed("請貼上 YouTube 單一影片網址，例如 youtube.com/watch 或 youtu.be。")
+            fail(.localizedKey("error.invalidURL"))
             return
         }
 
         loadRequestCount += 1
         guard toolchainStatus.canLoadMetadata else {
             let requiredIssues = toolchainStatus.issues.filter { ["yt-dlp", "Deno"].contains($0.toolName) }
-            state = .failed(requiredIssues.map(\.message).joined(separator: "\n\n"))
+            fail(.dependencies(requiredIssues))
             return
         }
 
+        failurePresentation = nil
         state = .loading
         videoInfo = nil
         selectedQuality = nil
@@ -80,7 +109,11 @@ final class DownloaderViewModel {
             selectedQuality = result.qualities.first
             state = .ready
         } catch {
-            state = .failed(error.localizedDescription)
+            if let serviceError = error as? YTDLPServiceError {
+                fail(.service(serviceError))
+            } else {
+                fail(.raw(error.localizedDescription))
+            }
         }
     }
 
@@ -106,8 +139,8 @@ final class DownloaderViewModel {
 
     func chooseDestination() {
         let panel = NSOpenPanel()
-        panel.title = "選擇下載資料夾"
-        panel.prompt = "選擇"
+        panel.title = languageSettings.string("folder.panelTitle")
+        panel.prompt = languageSettings.string("folder.panelPrompt")
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
@@ -123,10 +156,11 @@ final class DownloaderViewModel {
         guard !isBusy else { return }
         guard let videoInfo, let selectedQuality else { return }
         guard toolchainStatus.canDownload else {
-            state = .failed(toolchainStatus.issues.map(\.message).joined(separator: "\n\n"))
+            fail(.dependencies(toolchainStatus.issues))
             return
         }
 
+        failurePresentation = nil
         state = .downloading(DownloadProgress(
             downloadedBytes: 0,
             totalBytes: nil,
@@ -149,7 +183,16 @@ final class DownloaderViewModel {
             )
             state = .completed(outputURL)
         } catch {
-            state = .failed(error.localizedDescription)
+            if let serviceError = error as? YTDLPServiceError {
+                fail(.service(serviceError))
+            } else {
+                fail(.raw(error.localizedDescription))
+            }
         }
+    }
+
+    private func fail(_ presentation: FailurePresentation) {
+        failurePresentation = presentation
+        state = .failed(presentation.message(using: languageSettings))
     }
 }
