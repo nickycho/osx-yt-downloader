@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT_DIR"
+
+swift build --configuration release
+BIN_DIR="$(swift build --configuration release --show-bin-path)"
+EXECUTABLE="$BIN_DIR/YouTubeDownloader"
+APP_DIR="$PROJECT_DIR/build/YouTubeDownloader.app"
+CONTENTS_DIR="$APP_DIR/Contents"
+
+if [[ ! -x "$EXECUTABLE" ]]; then
+  echo "Release executable not found: $EXECUTABLE" >&2
+  exit 1
+fi
+
+mkdir -p "$CONTENTS_DIR/MacOS" "$CONTENTS_DIR/Resources"
+cp "$EXECUTABLE" "$CONTENTS_DIR/MacOS/YouTubeDownloader"
+
+cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>zh_TW</string>
+	<key>CFBundleDisplayName</key>
+	<string>YouTube Downloader</string>
+	<key>CFBundleExecutable</key>
+	<string>YouTubeDownloader</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.nickycho.youtube-downloader</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>YouTube Downloader</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+</dict>
+</plist>
+PLIST
+
+plutil -lint "$CONTENTS_DIR/Info.plist"
+test -x "$CONTENTS_DIR/MacOS/YouTubeDownloader"
+echo "Packaged app: $APP_DIR"
