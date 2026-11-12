@@ -17,6 +17,7 @@ fi
 
 mkdir -p "$CONTENTS_DIR/MacOS" "$CONTENTS_DIR/Resources"
 cp "$EXECUTABLE" "$CONTENTS_DIR/MacOS/YouTubeDownloader"
+cp "$PROJECT_DIR/Resources/AppIcon.icns" "$CONTENTS_DIR/Resources/AppIcon.icns"
 
 cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -31,6 +32,8 @@ cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
 	<string>YouTubeDownloader</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.nickycho.youtube-downloader</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -53,4 +56,5 @@ PLIST
 
 plutil -lint "$CONTENTS_DIR/Info.plist"
 test -x "$CONTENTS_DIR/MacOS/YouTubeDownloader"
+test -f "$CONTENTS_DIR/Resources/AppIcon.icns"
 echo "Packaged app: $APP_DIR"
